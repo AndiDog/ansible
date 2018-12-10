@@ -37,21 +37,21 @@ options:
     downed:
         description:
             - Should a 'down' file exist or not, if it exists it disables auto startup.
-              Defaults to no. Downed does not imply stopped.
+              defaults to no. Downed does not imply stopped.
         type: bool
         default: 'no'
     enabled:
         description:
-            - Whether the service is enabled or not, if disabled it also implies stopped.
-              Take note that a service can be enabled and downed (no auto restart).
+            - Wheater the service is enabled or not, if disabled it also implies stopped.
+              Make note that a service can be enabled and downed (no auto restart).
         type: bool
     service_dir:
         description:
-            - Directory svscan watches for services
+            - directory svscan watches for services
         default: /service
     service_src:
         description:
-            - Directory where services are defined, the source of symlinks to service_dir.
+            - directory where services are defined, the source of symlinks to service_dir.
 '''
 
 EXAMPLES = '''
@@ -149,19 +149,25 @@ class Svc(object):
             self.downed = os.path.lexists('%s/down' % self.svc_full)
             self.get_status()
         else:
+            if not os.path.isabs(self.src_full):
+                os.chdir(self.service_dir)
             self.downed = os.path.lexists('%s/down' % self.src_full)
             self.state = 'stopped'
 
     def enable(self):
+        if not os.path.isabs(self.src_full):
+            os.chdir(self.service_dir)
         if os.path.exists(self.src_full):
             try:
                 os.symlink(self.src_full, self.svc_full)
             except OSError as e:
                 self.module.fail_json(path=self.src_full, msg='Error while linking: %s' % to_native(e))
         else:
-            self.module.fail_json(msg="Could not find source for service to enable (%s)." % self.src_full)
+            self.module.fail_json(msg="ANDI Could not find source for service to enable (%s)." % self.src_full)
 
     def disable(self):
+        if not os.path.isabs(self.src_full):
+            os.chdir(self.service_dir)
         try:
             os.unlink(self.svc_full)
         except OSError as e:
@@ -273,7 +279,7 @@ def main():
                 else:
                     svc.disable()
             except (OSError, IOError) as e:
-                module.fail_json(msg="Could not change service link: %s" % to_native(e))
+                module.fail_json(msg="Could change service link: %s" % to_native(e))
 
     if state is not None and state != svc.state:
         changed = True
@@ -290,7 +296,7 @@ def main():
                 else:
                     os.unlink(d_file)
             except (OSError, IOError) as e:
-                module.fail_json(msg="Could not change downed file: %s " % (to_native(e)))
+                module.fail_json(msg="Could change downed file: %s " % (to_native(e)))
 
     module.exit_json(changed=changed, svc=svc.report())
 
